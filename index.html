@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Quiz Generator</title>
+<style>
+  /* ── Reset ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Base ── */
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #f3f4f6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 16px 24px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 580px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+
+  /* ── Typography ── */
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -.3px; margin-bottom: 4px; }
+  .subtitle { color: #57606a; font-size: 14px; margin-bottom: 28px; }
+
+  /* ── Form elements ── */
+  .field { margin-bottom: 20px; }
+  .field label {
+    display: block; font-size: 13px; font-weight: 600; color: #374151;
+    margin-bottom: 6px; letter-spacing: .02em; text-transform: uppercase;
+  }
+  input[type=text], input[type=password], select {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    color: #1f2328;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input[type=text]:focus, input[type=password]:focus, select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2357606a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+  .field-note { font-size: 12px; color: #6b7280; margin-top: 6px; }
+  .field-note a { color: #2563eb; text-decoration: none; }
+  .field-note a:hover { text-decoration: underline; }
+
+  /* ── Security note ── */
+  .key-note {
+    font-size: 12px;
+    color: #57606a;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 7px 11px;
+    margin-top: 7px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: block; width: 100%; padding: 11px 20px;
+    background: #2563eb; color: #fff; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; text-align: center;
+  }
+  .btn:hover { background: #1d4ed8; }
+  .btn:active { background: #1e40af; }
+  .btn:disabled { background: #93c5fd; cursor: not-allowed; }
+  .btn-outline {
+    background: #fff; color: #374151; border: 1px solid #d1d5db;
+  }
+  .btn-outline:hover { background: #f9fafb; }
+
+  /* ── Messages ── */
+  .msg {
+    display: none;
+    border-radius: 8px;
+    padding: 10px 13px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .msg-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .msg-warn  { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 22px 0; }
+
+  /* ── Loading ── */
+  #loading {
+    text-align: center;
+    padding: 40px 0;
+  }
+  .spinner {
+    display: inline-block;
+    width: 32px; height: 32px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 15px; color: #374151; font-weight: 500; }
+  .loading-sub { font-size: 13px; color: #6b7280; margin-top: 4px; }
+
+  /* ── Quiz ── */
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+  .progress-bar-wrap { background: #e5e7eb; border-radius: 99px; height: 4px; margin-bottom: 20px; }
+  .progress-bar { background: #2563eb; height: 4px; border-radius: 99px; transition: width .2s; }
+  .quiz-meta { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+  .question-text { font-size: 16px; font-weight: 600; line-height: 1.55; margin-bottom: 20px; color: #111827; }
+  .option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 15px; border: 1px solid #e5e7eb; border-radius: 8px;
+    margin-bottom: 9px; cursor: pointer; font-size: 14px; color: #1f2328; background: #fff;
+  }
+  .option:hover { background: #f9fafb; border-color: #d1d5db; }
+  .option.selected { border-color: #3b82f6; background: #eff6ff; color: #1e40af; }
+  .option input[type=radio] { accent-color: #2563eb; flex-shrink: 0; width: 16px; height: 16px; }
+
+  /* ── Result ── */
+  .score-big { font-size: 52px; font-weight: 800; color: #2563eb; line-height: 1; margin-bottom: 4px; }
+  .score-pct { font-size: 20px; color: #374151; font-weight: 600; margin-bottom: 6px; }
+  .score-label { font-size: 13px; color: #6b7280; }
+  .result-meta { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 24px; }
+  .score-feedback { text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 24px; padding: 10px 16px; border-radius: 8px; }
+  .feedback-great { background: #f0fdf4; color: #15803d; }
+  .feedback-good  { background: #fffbeb; color: #92400e; }
+  .feedback-retry { background: #fef2f2; color: #b91c1c; }
+
+  /* ── Hidden ── */
+  .hidden { display: none !important; }
+
+  /* ── Footer ── */
+  footer { margin-top: 20px; font-size: 12px; color: #9ca3af; text-align: center; }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    body { padding: 16px 12px 20px; }
+    .card { padding: 24px 18px; border-radius: 10px; }
+    h1 { font-size: 20px; }
+    .score-big { font-size: 44px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- ══════════════ HOME ══════════════ -->
+  <div id="home">
+    <h1>AI Quiz Generator</h1>
+    <p class="subtitle">Enter your API key, choose a topic and difficulty, and the AI will generate a unique 5-question quiz.</p>
+
+    <p id="home-error" class="msg msg-error"></p>
+
+    <div class="field">
+      <label for="provider">AI Provider</label>
+      <select id="provider">
+        <option value="gemini">Google Gemini (gemini-2.5-flash)</option>
+      </select>
+      <p class="field-note">Get a free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com</a></p>
+    </div>
+
+    <div class="field">
+      <label for="apikey">API Key</label>
+      <input id="apikey" type="password" placeholder="Paste your Gemini API key here" autocomplete="off" spellcheck="false">
+      <p class="key-note">Your API key is used only for this session and is not stored by this application.</p>
+    </div>
+
+    <div class="field">
+      <label for="topic">Topic</label>
+      <input id="topic" type="text" placeholder="e.g. Python, World War II, Photosynthesis…" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label for="difficulty">Difficulty</label>
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
+
+    <button class="btn" id="generate-btn" onclick="generateQuiz()">Generate Quiz</button>
+  </div>
+
+  <!-- ══════════════ LOADING ══════════════ -->
+  <div id="loading" class="hidden">
+    <div class="spinner"></div>
+    <p class="loading-text">Generating your quiz…</p>
+    <p class="loading-sub" id="loading-sub">Contacting AI — this usually takes a few seconds.</p>
+  </div>
+
+  <!-- ══════════════ QUIZ ══════════════ -->
+  <div id="quiz" class="hidden">
+    <div class="progress-label">
+      <span id="progress-text"></span>
+      <span id="progress-count"></span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <p class="quiz-meta" id="quiz-meta"></p>
+    <p class="question-text" id="question-text"></p>
+    <div id="options"></div>
+
+    <p id="no-answer-warn" class="msg msg-warn" style="margin-top:10px;">Please select an answer before continuing.</p>
+
+    <hr class="divider">
+    <button class="btn" onclick="nextQuestion()">Next &#x2192;</button>
+  </div>
+
+  <!-- ══════════════ RESULT ══════════════ -->
+  <div id="result" class="hidden">
+    <div style="text-align:center;margin-bottom:8px;">
+      <h1 style="margin-bottom:20px;">Quiz Complete</h1>
+      <div class="score-big" id="score-display"></div>
+      <div class="score-pct" id="pct-display"></div>
+      <div class="score-label">questions answered correctly</div>
+    </div>
+    <p class="result-meta" id="result-topic"></p>
+    <div class="score-feedback" id="score-feedback"></div>
+    <button class="btn" onclick="tryAgain()">Try Again</button>
+    <button class="btn btn-outline" style="margin-top:10px;" onclick="changeTopicBtn()">Change Topic</button>
+  </div>
+
+</div>
+
+<footer>AI Quiz Generator &bull; Student Project</footer>
+
+<script>
+/* ════════════════════════════════════════
+   VERIFIED API FACTS (live-probed 2025)
+   Provider  : Google Gemini
+   Model     : gemini-2.5-flash  (CORS + routing confirmed; gemini-3.5-flash-lite unverifiable)
+   Endpoint  : POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={KEY}
+   Auth      : ?key= URL query parameter
+   CORS      : Access-Control-Allow-Origin: null on OPTIONS preflight — supports file:// origins
+   Request   : { contents:[{parts:[{text:"..."}]}], generationConfig:{responseMimeType:"application/json"} }
+   Response  : data.candidates[0].content.parts[0].text  (JSON string)
+   Errors    : 400 API_KEY_INVALID | 429 RESOURCE_EXHAUSTED | 500 server error
+   NOTE      : gemini-2.0-flash-lite replaced; gemini-3.5-flash-lite could not be confirmed to exist
+   ════════════════════════════════════════ */
+
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+
+/* ── Session-only state (never persisted) ── */
+let _apiKey = "";          /* held in memory only; cleared on page refresh */
+let questions  = [];
+let current    = 0;
+let answers    = [];
+let selectedTopic      = "";
+let selectedDifficulty = "";
+
+/* ════════════════ GENERATION ════════════════ */
+
+async function generateQuiz() {
+  const keyInput  = document.getElementById("apikey");
+  const topicInput = document.getElementById("topic");
+  const diff      = document.getElementById("difficulty").value;
+  const errEl     = document.getElementById("home-error");
+
+  const rawKey   = keyInput.value.trim();
+  const rawTopic = topicInput.value.trim();
+
+  /* ── Client-side validation ── */
+  hideMsg(errEl);
+
+  if (!rawKey) {
+    showMsg(errEl, "Please enter your API key.");
+    keyInput.focus();
+    return;
+  }
+  if (!rawTopic) {
+    showMsg(errEl, "Please enter a topic for the quiz.");
+    topicInput.focus();
+    return;
+  }
+
+  /* ── Store key in memory only ── */
+  _apiKey = rawKey;
+  selectedTopic      = rawTopic;
+  selectedDifficulty = diff;
+
+  show("loading");
+  document.getElementById("generate-btn").disabled = true;
+  document.getElementById("loading-sub").textContent = "Contacting AI \u2014 this usually takes a few seconds.";
+
+  try {
+    const qs = await callGemini(_apiKey, buildPrompt(rawTopic, diff));
+    questions = qs;
+    current   = 0;
+    answers   = [];
+    show("quiz");
+    renderQuestion();
+  } catch (err) {
+    show("home");
+    showMsg(errEl, err.message);
+  } finally {
+    document.getElementById("generate-btn").disabled = false;
+  }
+}
+
+/* ════════════════ GEMINI API CALL ════════════════ */
+
+async function callGemini(key, prompt) {
+  const url  = GEMINI_ENDPOINT + "?key=" + encodeURIComponent(key);
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: "application/json" }
+  });
+
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    body
+    });
+  } catch (_) {
+    throw new Error("Network error \u2014 check your internet connection and try again.");
+  }
+
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    const code   = data?.error?.code;
+    const status = data?.error?.status || "";
+    const reason = (data?.error?.details || []).find(d => d.reason)?.reason || "";
+
+    if (reason === "API_KEY_INVALID" || status === "UNAUTHENTICATED" || code === 401) {
+      throw new Error("Invalid API key. Please check your key and try again.");
+    }
+    if (code === 429 || status === "RESOURCE_EXHAUSTED") {
+      throw new Error("API rate limit reached. Please wait a moment and try again.");
+    }
+    /* Sanitised: never include the key in error messages */
+    throw new Error("API error (" + code + "): " + (data?.error?.message || "Unknown error."));
+  }
+
+  /* ── Extract text from response ── */
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("The AI returned an empty response. Please try again.");
+  }
+
+  return parseAndValidate(text);
+}
+
+/* ════════════════ PROMPT ════════════════ */
+
+function buildPrompt(topic, difficulty) {
+  return (
+    "Generate exactly 5 multiple-choice quiz questions about the topic: \"" + topic + "\".\n" +
+    "Difficulty level: " + difficulty + ".\n\n" +
+    "Requirements:\n" +
+    "- Exactly 5 questions.\n" +
+    "- Each question must have exactly 4 answer options.\n" +
+    "- Exactly 1 option must be correct per question.\n" +
+    "- All questions must be directly about the topic.\n" +
+    "- Questions must be appropriate for the difficulty level.\n" +
+    "- No duplicate or very similar questions.\n\n" +
+    "Return ONLY a valid JSON array with no extra text, no markdown, no code fences.\n" +
+    "Use this exact structure:\n" +
+    "[\n" +
+    "  {\n" +
+    "    \"question\": \"Question text here?\",\n" +
+    "    \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n" +
+    "    \"answer\": 0\n" +
+    "  }\n" +
+    "]\n\n" +
+    "The \"answer\" field is the 0-based index of the correct option in the \"options\" array.\n" +
+    "Return nothing except the JSON array."
+  );
+}
+
+/* ════════════════ VALIDATION ════════════════ */
+
+function parseAndValidate(text) {
+  let raw;
+
+  /* Strip markdown code fences if model adds them despite instructions */
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const cleaned = fenced ? fenced[1].trim() : text.trim();
+
+  try {
+    raw = JSON.parse(cleaned);
+  } catch (_) {
+    throw new Error("The AI returned malformed JSON. Please try again.");
+  }
+
+  if (!Array.isArray(raw)) {
+    throw new Error("The AI response was not a question list. Please try again.");
+  }
+
+  /* Accept 5 exactly; trim if model over-generates */
+  const qs = raw.slice(0, 5);
+
+  if (qs.length < 5) {
+    throw new Error("The AI returned fewer than 5 questions. Please try again.");
+  }
+
+  const seen = new Set();
+  const validated = [];
+
+  for (let i = 0; i < qs.length; i++) {
+    const q = qs[i];
+
+    if (typeof q.question !== "string" || q.question.trim() === "") {
+      throw new Error("Question " + (i + 1) + " is missing question text.");
+    }
+    if (!Array.isArray(q.options) || q.options.length !== 4) {
+      throw new Error("Question " + (i + 1) + " must have exactly 4 options.");
+    }
+    if (q.options.some(o => typeof o !== "string" || o.trim() === "")) {
+      throw new Error("Question " + (i + 1) + " has an empty or invalid option.");
+    }
+    if (typeof q.answer !== "number" || !Number.isInteger(q.answer) || q.answer < 0 || q.answer > 3) {
+      throw new Error("Question " + (i + 1) + " has an invalid answer index (must be 0\u20133).");
+    }
+
+    /* Duplicate check (normalised lowercase) */
+    const key = q.question.trim().toLowerCase();
+    if (seen.has(key)) {
+      throw new Error("The AI returned duplicate questions. Please try again.");
+    }
+    seen.add(key);
+
+    validated.push({
+      q:       q.question.trim(),
+      options: q.options.map(o => o.trim()),
+      answer:  q.answer
+    });
+  }
+
+  return validated;
+}
+
+/* ════════════════ QUIZ FLOW ════════════════ */
+
+function renderQuestion() {
+  const q   = questions[current];
+  const pct = Math.round((current / 5) * 100);
+
+  document.getElementById("progress-text").textContent  = "Question " + (current + 1) + " of 5";
+  document.getElementById("progress-count").textContent = cap(selectedDifficulty);
+  document.getElementById("progress-bar").style.width   = pct + "%";
+  document.getElementById("quiz-meta").textContent      = "Topic: " + selectedTopic;
+  document.getElementById("question-text").textContent  = q.q;
+  hideMsg(document.getElementById("no-answer-warn"));
+
+  const opts = document.getElementById("options");
+  opts.innerHTML = "";
+  q.options.forEach(function(opt, i) {
+    const label = document.createElement("label");
+    label.className = "option";
+    label.innerHTML = "<input type=\"radio\" name=\"opt\" value=\"" + i + "\"> " + escHtml(opt);
+    label.querySelector("input").addEventListener("change", function() {
+      document.querySelectorAll(".option").forEach(function(el) { el.classList.remove("selected"); });
+      label.classList.add("selected");
+      hideMsg(document.getElementById("no-answer-warn"));
+    });
+    opts.appendChild(label);
+  });
+}
+
+function nextQuestion() {
+  const selected = document.querySelector("input[name=\"opt\"]:checked");
+  if (!selected) {
+    showMsg(document.getElementById("no-answer-warn"), "Please select an answer before continuing.");
+    return;
+  }
+  answers.push(parseInt(selected.value, 10));
+  current++;
+  if (current < 5) {
+    renderQuestion();
+  } else {
+    showResult();
+  }
+}
+
+function showResult() {
+  let score = 0;
+  answers.forEach(function(ans, i) { if (ans === questions[i].answer) score++; });
+  const pct = Math.round((score / 5) * 100);
+
+  document.getElementById("score-display").textContent = score + " / 5";
+  document.getElementById("pct-display").textContent   = pct + "%";
+  document.getElementById("result-topic").textContent  =
+    "Topic: " + selectedTopic + "  \u00B7  Difficulty: " + cap(selectedDifficulty);
+
+  const fb = document.getElementById("score-feedback");
+  if (score === 5) {
+    fb.textContent = "Perfect score! Excellent work.";
+    fb.className   = "score-feedback feedback-great";
+  } else if (score >= 3) {
+    fb.textContent = "Good effort! Review the questions you missed.";
+    fb.className   = "score-feedback feedback-good";
+  } else {
+    fb.textContent = "Keep practising \u2014 try again to improve your score.";
+    fb.className   = "score-feedback feedback-retry";
+  }
+
+  show("result");
+}
+
+function tryAgain() {
+  /* Re-generate with the same topic, difficulty, and in-memory key */
+  if (!_apiKey) { changeTopicBtn(); return; }
+  current = 0;
+  answers = [];
+  show("loading");
+  document.getElementById("loading-sub").textContent = "Generating a fresh set of questions\u2026";
+  callGemini(_apiKey, buildPrompt(selectedTopic, selectedDifficulty))
+    .then(function(qs) {
+      questions = qs;
+      current   = 0;
+      answers   = [];
+      show("quiz");
+      renderQuestion();
+    })
+    .catch(function(err) {
+      show("home");
+      showMsg(document.getElementById("home-error"), err.message);
+    });
+}
+
+function changeTopicBtn() {
+  /* Return to home; key stays in input (still in memory, not persisted) */
+  hideMsg(document.getElementById("home-error"));
+  show("home");
+}
+
+/* ════════════════ UTILITIES ════════════════ */
+
+function show(id) {
+  ["home","loading","quiz","result"].forEach(function(s) {
+    document.getElementById(s).classList.add("hidden");
+  });
+  document.getElementById(id).classList.remove("hidden");
+}
+
+function showMsg(el, text) {
+  el.textContent = text;
+  el.style.display = "block";
+}
+
+function hideMsg(el) {
+  el.style.display = "none";
+  el.textContent   = "";
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function escHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+</script>
+</body>
+</html>
